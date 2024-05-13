@@ -1,4 +1,3 @@
-
 import spacy
 import langdetect
 from wordcloud import WordCloud 
@@ -21,14 +20,14 @@ def langDetect(text):
     mylangprob = 0.0
     try:
         langs = langdetect.detect_langs(text)
-        mylang, mylangprop = langs[0].lang, langs[0].prob 
+        mylang, mylangprob = langs[0].lang, langs[0].prob 
         
         # English
         if mylang=='en': 
             models = ['en_core_web_md', 'da_core_news_md']
             default_model = 'en_core_web_md'
         # Danish    
-        elif mylang=='da' or lang=='no': 
+        elif mylang=='da' or mylang=='no': 
             models = ['da_core_news_md', 'en_core_web_md']
             default_model = 'da_core_news_md'
         # both    
@@ -37,7 +36,7 @@ def langDetect(text):
     
     # another language
     except langdetect.lang_detect_exception.LangDetectException:
-        log.debug('Language not supported')
+        print('Language not supported')
         
     return default_model, stopw
 
