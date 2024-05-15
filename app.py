@@ -9,13 +9,15 @@ import myloadlib
 from myloadlib import loadFile
 import myutils2
 from myutils2 import chunkDocs, langDetect, wordCloud
+from langchain.callbacks.manager import CallbackManager
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
 def main():
-    st.title('Interactive PDF to Text and QA Application')
+    st.title('OLA 5 - Question Answering System by Caroline & Maria (Gruppe H)')
 
-    # File uploader widget to get a PDF file from the user
-    st.header('Upload PDF File:')
-    pdf_file = st.file_uploader('Upload a PDF file', type=['pdf'])
+    # Input widget to get text documents from the user
+    st.header('Enter PATH to a PDF file:')
+    documents = st.text_area('Type or paste your pdf path here:')
 
     # Input widget to get the question from the user
     st.header('Enter Your Question:')
@@ -23,9 +25,9 @@ def main():
 
     # Button to trigger the processing of the uploaded PDF and question
     if st.button('Get Answer'):
-        if pdf_file is not None and question:
+        if documents is not None and question:
             # Process the uploaded PDF file to extract text content
-            pdf_text = myloadlib.loadFile(pdf_file)
+            pdf_text = loadFile(documents)
             if pdf_text:
                 answer = get_answer(pdf_text, question)
                 st.subheader('Answer:')
@@ -83,7 +85,8 @@ def get_answer(documents, question):
         chain_type_kwargs={"prompt": prompt}
     )
     
-    return chain({"query": question})
+    result = chain({"query": question})
+    return result["result"]
 
 
 if __name__ == "__main__":
