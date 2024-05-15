@@ -1,5 +1,7 @@
 import os
 from typing import List
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 # LangChain Document loaders v.2
 from langchain_community.document_loaders  import PyPDFLoader
