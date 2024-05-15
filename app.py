@@ -5,52 +5,86 @@ from langchain.vectorstores import Chroma
 from langchain.prompts import PromptTemplate
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
+import myloadlib
+from myloadlib import loadFile
+import myutils2
+from myutils2 import chunkDocs, langDetect, wordCloud
 
-# documents
-documents = []
+def main():
+    st.title('Interactive PDF to Text and QA Application')
 
-# Load your embeddings and vector store
-model_name = "sentence-transformers/all-mpnet-base-v2"
-model_kwargs = {'device': 'cpu'}
-encode_kwargs = {'normalize_embeddings': False}
-embeddings = HuggingFaceEmbeddings(model_name=model_name, model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
+    # File uploader widget to get a PDF file from the user
+    st.header('Upload PDF File:')
+    pdf_file = st.file_uploader('Upload a PDF file', type=['pdf'])
 
-# Load your vector store
-persist_directory = '../data/chroma/'
-vectordb = Chroma.from_documents(persist_directory)
+    # Input widget to get the question from the user
+    st.header('Enter Your Question:')
+    question = st.text_input('Type your question here')
 
-# Load your LLM
-llm = Ollama(model="mistral")
+    # Button to trigger the processing of the uploaded PDF and question
+    if st.button('Get Answer'):
+        if pdf_file is not None and question:
+            # Process the uploaded PDF file to extract text content
+            pdf_text = myloadlib.loadFile(pdf_file)
+            if pdf_text:
+                answer = get_answer(pdf_text, question)
+                st.subheader('Answer:')
+                st.write(answer)
+            else:
+                st.warning('Failed to extract text from the PDF file. Please try again.')
+        else:
+            st.warning('Please upload a PDF file and provide a question')
 
-# Build prompt
-template = """
-Use the following pieces of context to answer the question at the end. 
-If you don't know the answer, just say that you don't know, don't try to make up an answer. 
-Use five sentences maximum. Keep the answer as concise as possible. 
-Always say "thanks for asking!" at the end of the answer. 
 
-{context}
+def get_answer(documents, question):
+    splits = myutils2.chunkDocs(documents, 350)  
+    df = pd.DataFrame(splits, columns=['page_content', 'metadata', 'type'])
 
-Question: {question}
+    model_name = "sentence-transformers/all-mpnet-base-v2"
+    model_kwargs = {'device': 'cpu'}
+    encode_kwargs = {'normalize_embeddings': False}
 
-Helpful Answer:
-"""
-prompt = PromptTemplate.from_template(template)
+    embeddings = HuggingFaceEmbeddings(
+        model_name=model_name,
+        model_kwargs=model_kwargs,
+        encode_kwargs=encode_kwargs
+    )
 
-# Build QA chain
-chain = RetrievalQA.from_chain_type(
-    llm,
-    retriever=vectordb.as_retriever(),
-    return_source_documents=True,
-    chain_type_kwargs={"prompt": prompt}
-)
+    db = Chroma.from_documents(splits, embeddings)
+    persist_directory = '../data/chroma/'
 
-# Streamlit app
-st.title("Knitting FAQ")
-question = st.text_input("Ask your question here:")
+    # Create the vector store
+    vectordb = Chroma.from_documents(
+        documents=splits,
+        embedding=embeddings,
+        persist_directory=persist_directory
+    )
+    vectordb.persist()
+    
+    llm = Ollama(model="mistral", callback_manager = CallbackManager([StreamingStdOutCallbackHandler()]))
+    # Build prompt
+    template = """Use the following pieces of context to answer the question at the end. 
+    If you don't know the answer, just say that you don't know, don't try to make up an answer. 
+    Use five sentences maximum. Keep the answer as concise as possible. 
+    Always say "thanks for asking!" at the end of the answer. 
 
-if st.button("Get Answer"):
-    result = chain({"query": question})
-    answer = result["result"]
-    st.write("Answer:")
-    st.write(answer)
+    {context}
+
+    Question: {question}
+
+    Helpful Answer:
+    """
+    
+    prompt = PromptTemplate.from_template(template)
+    chain = RetrievalQA.from_chain_type(
+        llm,
+        retriever=vectordb.as_retriever(),
+        return_source_documents=True,
+        chain_type_kwargs={"prompt": prompt}
+    )
+    
+    return chain({"query": question})
+
+
+if __name__ == "__main__":
+    main()
