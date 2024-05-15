@@ -25,11 +25,11 @@ def langDetect(text):
         
         # English
         if mylang=='en': 
-            models = ['en_core_web_sm', 'da_core_news_md']
-            default_model = 'en_core_web_sm'
+            models = ['en_core_web_md', 'da_core_news_md']
+            default_model = 'en_core_web_md'
         # Danish    
         elif mylang=='da' or lang=='no': 
-            models = ['da_core_news_md', 'en_core_web_sm']
+            models = ['da_core_news_md', 'en_core_web_md']
             default_model = 'da_core_news_md'
         # both    
         nlp = spacy.load(default_model)
